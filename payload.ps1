@@ -12,8 +12,16 @@ $file = Get-ChildItem -Recurse | Where-Object { $_.Name -eq $fileName }
 
 # Check if the file was found
 if ($file -ne $null) {
-    # Assuming you want to copy the file to a specific location before sending
-    $destinationPath = "C:\Path\To\Copy\File\$fileName"
+    # Define the destination path for the file copy to C:\Temp
+    $destinationDirectory = "C:\Temp"
+    $destinationPath = Join-Path -Path $destinationDirectory -ChildPath $fileName
+    
+    # Check if the destination directory exists, create it if it doesn't
+    if (-not (Test-Path -Path $destinationDirectory)) {
+        New-Item -ItemType Directory -Path $destinationDirectory
+    }
+
+    # Copy the file to the destination
     Copy-Item -Path $file.FullName -Destination $destinationPath
 
     # Preparing data for sending to a webhook (hypothetically)
@@ -28,4 +36,3 @@ if ($file -ne $null) {
 } else {
     Write-Output "File $fileName not found."
 }
-
